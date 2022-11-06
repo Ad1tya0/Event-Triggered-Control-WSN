@@ -42,7 +42,7 @@
 #ifndef CONTIKI_TARGET_SKY
 linkaddr_t etc_controller = {{0xF7, 0x9C}}; /* Firefly node 1 will be our etc_controller */
 #define NUM_SENSORS 5
-linkaddr_t etc_sensors[] = {
+linkaddr_t etc_sensors[NUM_SENSORS] = {
   {{0xF3, 0x84}}, /* Firefly node 3 will be one of our sensor-actuator nodes */
   {{0xF2, 0x33}}, /* Firefly node 12 will be one of our sensor-actuator nodes */
   {{0xf3, 0x8b}}, /* Firefly node 18 will be one of our sensor-actuator nodes */
@@ -79,6 +79,7 @@ static uint32_t sensor_value;
 static uint32_t sensor_threshold;
 static struct ctimer sensor_timer;
 static void sensor_timer_cb(void* ptr);
+
 /*---------------------------------------------------------------------------*/
 /* Controller */
 /*---------------------------------------------------------------------------*/
@@ -97,10 +98,41 @@ static uint8_t num_sensor_readings;
 /* Actuation functions */
 static void actuation_logic();
 static void actuation_commands();
+
+/*---------------------------------------------------------------------------*/
+/*                           Node Allocator                                    */
+//would need for tree building, port elsewhere?
+static enum node_role_t nodeType_returnvar = NODE_ROLE_INVALID;
+
+enum node_role_t get_nodeType(void){
+        if(&linkaddr_node_addr == &etc_controller) {
+            nodeType_returnvar = NODE_ROLE_CONTROLLER;
+            return nodeType_returnvar;
+        }
+
+    for(int i = 0; i<NUM_SENSORS; i++){
+        if(&linkaddr_node_addr == &etc_sensors[i]){
+            nodeType_returnvar = NODE_ROLE_SENSOR_ACTUATOR;
+            return nodeType_returnvar;
+        }
+    }
+
+    if (nodeType_returnvar == NODE_ROLE_INVALID)
+        return nodeType_returnvar;
+
+    //if(&linkaddr_node_addr == &etc_forwarder){
+        nodeType_returnvar = NODE_ROLE_FORWARDER;
+        return nodeType_returnvar;
+    //}
+}
+
+
+/*---------------------------------------------------------------------------*/
+
 /*---------------------------------------------------------------------------*/
 /* Application */
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(app_process, ev, data) 
+PROCESS_THREAD(app_process, ev, data)
 {
   PROCESS_BEGIN();
   SENSORS_ACTIVATE(button_sensor);
@@ -111,12 +143,18 @@ PROCESS_THREAD(app_process, ev, data)
   printf("App: I am node %02x:%02x\n",
     linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
 
+  static enum node_role_t nodeType;
+
   while(true) {
 
+      nodeType = get_nodeType(); //implement in node allocator //implemented here, port later
     /* Controller opens connection, then waits events and data
     * coming with the callback to generate actuation commands */
-    if(linkaddr_cmp(&etc_controller, &linkaddr_node_addr)) {
 
+   // if(linkaddr_cmp(&etc_controller, &linkaddr_node_addr)) {
+
+
+      if(nodeType() == NODE_ROLE_CONTROLLER)
       /* Set callbacks */
       cb.ev_cb = ev_cb;
       cb.recv_cb = recv_cb;
@@ -128,22 +166,27 @@ PROCESS_THREAD(app_process, ev, data)
         linkaddr_copy(&sensor_readings[i].addr, &etc_sensors[i]);
         sensor_readings[i].reading_available = false;
         sensor_readings[i].threshold = CONTROLLER_MAX_DIFF;
-      }
+        sensor_readings[i].seqn = 0;
+        sensor_readings[i].value = 0;
+        sensor_readings[i].command = COMMAND_TYPE_NONE;
+      }; //wrap in function?
       num_sensor_readings = 0;
 
-      /* Open connection (builds the tree when started) */
+      /* Open connection (builds the tree when started) */ //implement beacon+tree first
       etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_CONTROLLER, &cb, etc_sensors, NUM_SENSORS);
       printf("App: Controller started\n");
-    }
-    else {
+    }   //starts controller module, requries event dependancies
 
-      /* Check if the node is a sensor/actuator or a forwarder */
+
+    else if(nodeType() == NODE_ROLE_SENSOR_ACTUATOR) {
+
+      /* Check if the node is a sensor/actuator  */
       int i;
       is_sensor = false;
       for(i=0; i<NUM_SENSORS; i++) {
         if(linkaddr_cmp(&etc_sensors[i], &linkaddr_node_addr)) {
           is_sensor = true;
-
+          prev_cmd_s.cmdtype = COMMAND_TYPE_NONE;   //set previous command to none
           /* Initialize sensed data and threshold */
           sensor_value = SENSOR_STARTING_VALUE_STEP * i;
           sensor_threshold = CONTROLLER_MAX_DIFF;
@@ -152,9 +195,9 @@ PROCESS_THREAD(app_process, ev, data)
           ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
 
           /* Set callbacks */
-          cb.ev_cb = NULL;
-          cb.recv_cb = NULL;
-          cb.com_cb = com_cb;
+          cb.ev_cb = NULL;  //event callback
+          cb.recv_cb = NULL;    //receive callback
+          cb.com_cb = com_cb;   //communication callback
 
           /* Open connection (only the command callback is set for sensor/actuators) */
           etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_SENSOR_ACTUATOR, &cb, etc_sensors, NUM_SENSORS);
@@ -162,9 +205,10 @@ PROCESS_THREAD(app_process, ev, data)
           break;
         }
       }
+      }//starts sensor/actuator module, requries callback dependancies
 
       /* The node is a forwarder */
-      if(!is_sensor) {
+      if(nodeType() == NODE_ROLE_FORWARDER) {
 
         /* Open connection (no callback is set for forwarders) */
         etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_FORWARDER, &cb, etc_sensors, NUM_SENSORS);
@@ -221,7 +265,7 @@ recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *s
    * Add proper logging! */
 
   /* Add sensor reading (careful with duplicates!) */
-  
+
   /* Logging (based on the current event handled by the controller,
    * identified by the event_source and its sequence number);
    * in principle, this may not be the same event_source and event_seqn
@@ -369,11 +413,11 @@ actuation_commands() {
   int i;
   for(i=0; i<NUM_SENSORS; i++) {
     if(sensor_readings[i].command != COMMAND_TYPE_NONE) {
-      etc_command(&etc, 
+      etc_command(&etc,
         &sensor_readings[i].addr,
         sensor_readings[i].command,
         sensor_readings[i].threshold);
-      
+
       /* Logging (based on the current event, expressed by source seqn) */
       printf("COMMAND [%02x:%02x, %u] %02x:%02x\n",
         etc.event_source.u8[0], etc.event_source.u8[1],

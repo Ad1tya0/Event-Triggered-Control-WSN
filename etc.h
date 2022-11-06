@@ -31,7 +31,8 @@ typedef enum {
 typedef enum {
   NODE_ROLE_CONTROLLER,
   NODE_ROLE_SENSOR_ACTUATOR,
-  NODE_ROLE_FORWARDER
+  NODE_ROLE_FORWARDER,
+  NODE_ROLE_INVALID
 } node_role_t;
 /*---------------------------------------------------------------------------*/
 /* Callback structure */
@@ -44,6 +45,14 @@ struct etc_callbacks {
   /* Sensor/actuator callbacks */
   void (* com_cb)(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t command, uint32_t threshold);
 };
+
+//sensor previous command structure
+static struct {
+    uint16_t event_seqn;
+    linkaddr_t event_source;
+    enum command_type_t cmdtype;
+    uint32_t threshold;
+} prev_cmd_s;
 /*---------------------------------------------------------------------------*/
 /* Connection object */
 struct etc_conn {

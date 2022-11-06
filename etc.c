@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include "core/net/linkaddr.h"
 #include "etc.h"
+#include <net/mac/mac.h>
+#include <net/packetbuf.h>
 /*---------------------------------------------------------------------------*/
 /* A simple debug system to enable/disable some printfs */
 #define DEBUG 0
@@ -21,13 +23,13 @@
 /*---------------------------------------------------------------------------*/
 /* Forwarders (routes to sensors/actuators) */
 
-void forwarder_init(void) {
-  etc_open(CONNECTION_CHANNEL, NULL);
-}
-
-void forwarder_terminate(void) {
-  etc_close();
-}
+//void forwarder_init(void) {
+//  etc_open(CONNECTION_CHANNEL, NULL);
+//}
+//
+//void forwarder_terminate(void) {
+//  etc_close();
+//}
 
 /* ... */
 /*---------------------------------------------------------------------------*/
@@ -39,12 +41,16 @@ void forwarder_terminate(void) {
 /*---------------------------------------------------------------------------*/
 /*                           Application Interface                           */
 /*---------------------------------------------------------------------------*/
+
+
 /* Create connection(s) and start the protocol */
 bool
 etc_open(struct etc_conn* conn, uint16_t channels, 
          node_role_t node_role, const struct etc_callbacks *callbacks,
          linkaddr_t *sensors, uint8_t num_sensors)
 {
+
+    startETC(uint16_t )
   /* Initialize the connector structure */
 
   /* Open the underlying Rime primitives */
