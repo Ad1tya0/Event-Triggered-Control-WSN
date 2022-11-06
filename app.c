@@ -71,6 +71,9 @@ static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const l
 static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn);
 static void com_cb(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t command, uint32_t threshold);
 struct etc_callbacks cb = {.recv_cb = NULL, .ev_cb = NULL, .com_cb = NULL};
+const struct event_msg_t *currentEvent(void) {
+    return &event;
+}
 /*---------------------------------------------------------------------------*/
 /* Sensor */
 /*---------------------------------------------------------------------------*/
@@ -78,7 +81,9 @@ static bool is_sensor;
 static uint32_t sensor_value;
 static uint32_t sensor_threshold;
 static struct ctimer sensor_timer;
+static struct ctimer collectionTimer;
 static void sensor_timer_cb(void* ptr);
+
 
 /*---------------------------------------------------------------------------*/
 /* Controller */
@@ -99,6 +104,12 @@ static uint8_t num_sensor_readings;
 static void actuation_logic();
 static void actuation_commands();
 
+/* timer callbacks */
+static void collectionTimer_cb(void* ptr) {
+    actuation_logic();
+    actuation_commands();
+
+}
 /*---------------------------------------------------------------------------*/
 /*                           Node Allocator                                    */
 //would need for tree building, port elsewhere?
@@ -195,9 +206,9 @@ PROCESS_THREAD(app_process, ev, data)
           ctimer_set(&sensor_timer, SENSOR_UPDATE_INTERVAL, sensor_timer_cb, NULL);
 
           /* Set callbacks */
-          cb.ev_cb = NULL;  //event callback
+          cb.ev_cb = NULL;      //event callback
           cb.recv_cb = NULL;    //receive callback
-          cb.com_cb = com_cb;   //communication callback
+          cb.com_cb = com_cb;   //command callback
 
           /* Open connection (only the command callback is set for sensor/actuators) */
           etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_SENSOR_ACTUATOR, &cb, etc_sensors, NUM_SENSORS);
@@ -282,7 +293,7 @@ recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *s
   /* If all data was collected, call actuation logic */
 }
 /*---------------------------------------------------------------------------*/
-/* Event detection callback;
+/* Event detection callback; //DONE
  * This callback notifies the controller of an ongoing event dissemination.
  * After this notification, the controller waits for sensor readings.
  * The event callback should come with the event_source (the address of the
@@ -290,19 +301,42 @@ recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *s
  * number). The logging, reporting source and sequence number, can be matched
  * with data collection logging to count how many packets, associated to this
  * event, were received. */
-static void
-ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) {
+static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //events are generated on sensor value
 
   /* Check if the event is old and discard it in that case;
    * otherwise, update the current event being handled */
 
-  /* Logging */
-  printf("EVENT [%02x:%02x, %u]\n",
-    etc.event_source.u8[0], etc.event_source.u8[1],
-    etc.event_seqn);
+  struct event_msg_t *curr_ev = currentEvent();
+  struct sensor_reading_t *sensorVal;
 
-  /* Wait for sensor readings */
-}
+  /* Logging */
+  if(ctimer_expired(&collectionTimer) == 0) {
+      printf("EVENT [%02x:%02x, %u] DISCARDED as timer is running\n",
+             etc.event_source.u8[0], etc.event_source.u8[1],
+             etc.event_seqn);
+      return;
+  }
+  /* get sensor readings */
+  int i;
+  for(i=0; i < NUM_SENSORS; i++){
+      sensorVal = &sensor_readings[i];
+      if(event_source == sensorVal.addr)    //check if address is from sensor
+          break;
+  }
+  if(i > NUM_SENSORS)
+      printf("ERROR: failed to verify sensor\n");
+
+  sensorVal.seqn = event_seqn; //update sequence number
+
+  //RESET
+  for(i=0; i < NUM_SENSORS; i++){
+      sensorVal[i].command = COMMAND_TYPE_NONE;
+      sensorVal[i].reading_available = 0;
+  }
+  num_sensor_readings = 0;
+  ctimer_set(&collectionTimer, CONTROLLER_COLLECT_WAIT, collectionTimer_cb; NULL);
+}//end event callback function
+
 /*---------------------------------------------------------------------------*/
 /* Command reception callback;
  * This callback notifies the sensor/actuator of a command from the controller.
@@ -330,8 +364,7 @@ com_cb(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t comma
  * to all sensor/actuators that are violating them.
  * Should be called before actuation_commands(), which sends ACTUATION messages
  * based on the results of actuation_logic() */
-void
-actuation_logic() {
+void actuation_logic() {
   if(num_sensor_readings < 1) {
     printf("Controller: No data collected\n");
     return;
