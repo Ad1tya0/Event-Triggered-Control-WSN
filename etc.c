@@ -23,14 +23,6 @@
 /*---------------------------------------------------------------------------*/
 /* Forwarders (routes to sensors/actuators) */
 
-//void forwarder_init(void) {
-//  etc_open(CONNECTION_CHANNEL, NULL);
-//}
-//
-//void forwarder_terminate(void) {
-//  etc_close();
-//}
-
 /* ... */
 /*---------------------------------------------------------------------------*/
 /* Declarations for the callbacks of dedicated connection objects */
