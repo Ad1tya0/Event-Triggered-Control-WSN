@@ -112,7 +112,7 @@ static void collectionTimer_cb(void* ptr) {
 }
 /*---------------------------------------------------------------------------*/
 /*                           Node Allocator                                    */
-//would need for tree building, port elsewhere?
+//would need for beacon tree building, port elsewhere?
 static enum node_role_t nodeType_returnvar = NODE_ROLE_INVALID;
 
 enum node_role_t get_nodeType(void){
