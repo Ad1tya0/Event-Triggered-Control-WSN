@@ -70,6 +70,7 @@ static struct etc_conn etc;
 static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *source, uint32_t value, uint32_t threshold);
 static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn);
 static void com_cb(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t command, uint32_t threshold);
+
 struct etc_callbacks cb = {.recv_cb = NULL, .ev_cb = NULL, .com_cb = NULL};
 const struct event_msg_t *currentEvent(void) {
     return &event;
@@ -81,7 +82,7 @@ static bool is_sensor;
 static uint32_t sensor_value;
 static uint32_t sensor_threshold;
 static struct ctimer sensor_timer;
-static struct ctimer collectionTimer;
+static struct ctimer collectionTimer; //receiver timer
 static void sensor_timer_cb(void* ptr);
 
 
@@ -269,11 +270,53 @@ sensor_timer_cb(void* ptr) {
  * When all readings have been collected, the controller can send commands.
  * You may send commands earlier if some data is missing after a timeout,
  * running actuation logic on the acquired data. */
-static void
-recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *source, uint32_t value, uint32_t threshold) {
+static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *source, uint32_t value, uint32_t threshold) { //DOING
+
+    struct event_msg_t *event = currentEvent();
+    struct sensor_reading_t *sensorVal = NULL;
+    struct sensor_reading_t *sensorEvent = NULL;
+
 
   /* What if controller has not seen the event message for this collection?
    * Add proper logging! */
+
+  int i;
+  for (i=0; i<NUM_SENSORS; i++){
+      if (sensorVal == NULL){ //check
+          sensorVal = (linkaddr_cmp(event_source, &sensor_readings[i].addr) ? &sensor_readings[i] : NULL);
+          printf("DISCARDING [%02x:%02x, %u] %02x:%02x (%lu, %lu) as failed to verify source node\n",
+                 etc.event_source.u8[0], etc.event_source.u8[1],
+                 etc.event_seqn,
+                 source->u8[0], source->u8[1],
+                 value, threshold);
+          return;
+      }
+      if (sensorEvent == NULL){//check
+          sensorEvent = (linkaddr_cmp(event_source, &sensor_readings[i].addr) ? &sensor_readings[i] : NULL);
+          printf("DISCARDING [%02x:%02x, %u] %02x:%02x (%lu, %lu) as failed to verify event source\n",
+                 etc.event_source.u8[0], etc.event_source.u8[1],
+                 etc.event_seqn,
+                 source->u8[0], source->u8[1],
+                 value, threshold);
+          return;
+      }
+
+      else if (sensorVal != NULL){
+          if(sensorEvent != NULL){  //go!
+              break;
+          }
+      }
+  }
+
+
+  if (i > NUM_SENSORS){
+      printf("DISCARDING [%02x:%02x, %u] %02x:%02x (%lu, %lu) as duplicate/previous\n",
+             etc.event_source.u8[0], etc.event_source.u8[1],
+             etc.event_seqn,
+             source->u8[0], source->u8[1],
+             value, threshold);
+      return;
+  }
 
   /* Add sensor reading (careful with duplicates!) */
 
@@ -303,11 +346,24 @@ recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *s
  * event, were received. */
 static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //events are generated on sensor value
 
-  /* Check if the event is old and discard it in that case;
-   * otherwise, update the current event being handled */
+
 
   struct event_msg_t *curr_ev = currentEvent();
   struct sensor_reading_t *sensorVal;
+
+
+    /* Check if the event is old and discard it in that case;
+   * otherwise, update the current event being handled */
+
+    if(event_seqn != 0){
+        if(event_seqn <= sensorVal.seqn){ //old value
+            printf("EVENT [%02x:%02x, %u] DISCARDED as event is old\n",
+                   etc.event_source.u8[0], etc.event_source.u8[1],
+                   etc.event_seqn);
+            return;
+        }
+
+    }
 
   /* Logging */
   if(ctimer_expired(&collectionTimer) == 0) {
