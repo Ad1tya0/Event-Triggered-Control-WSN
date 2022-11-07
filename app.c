@@ -165,7 +165,7 @@ PROCESS_THREAD(app_process, ev, data)
    // if(linkaddr_cmp(&etc_controller, &linkaddr_node_addr)) {
 
 
-      if(nodeType() == NODE_ROLE_CONTROLLER)
+      if(nodeType == NODE_ROLE_CONTROLLER)
       /* Set callbacks */
       cb.ev_cb = ev_cb;
       cb.recv_cb = recv_cb;
@@ -189,7 +189,7 @@ PROCESS_THREAD(app_process, ev, data)
     }   //starts controller module, requries event dependancies
 
 
-    else if(nodeType() == NODE_ROLE_SENSOR_ACTUATOR) {
+    else if(nodeType == NODE_ROLE_SENSOR_ACTUATOR) {
 
       /* Check if the node is a sensor/actuator  */
       int i;
@@ -219,7 +219,7 @@ PROCESS_THREAD(app_process, ev, data)
       }//starts sensor/actuator module, requries callback dependancies
 
       /* The node is a forwarder */
-      if(nodeType() == NODE_ROLE_FORWARDER) {
+      if(nodeType == NODE_ROLE_FORWARDER) {
 
         /* Open connection (no callback is set for forwarders) */
         etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_FORWARDER, &cb, etc_sensors, NUM_SENSORS);
