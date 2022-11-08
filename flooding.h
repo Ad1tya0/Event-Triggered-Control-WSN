@@ -1,0 +1,11 @@
+//
+// Created by Ad1tya on 08-11-2022.
+//
+
+#ifndef EVENT_TRIGGERED_CONTROL_WSN_FLOODING_H
+#define EVENT_TRIGGERED_CONTROL_WSN_FLOODING_H
+
+#endif //EVENT_TRIGGERED_CONTROL_WSN_FLOODING_H
+
+
+/* Beacon message structure */
