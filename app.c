@@ -165,7 +165,7 @@ PROCESS_THREAD(app_process, ev, data)
    // if(linkaddr_cmp(&etc_controller, &linkaddr_node_addr)) {
 
 
-      if(nodeType == NODE_ROLE_CONTROLLER)
+      if(nodeType == NODE_ROLE_CONTROLLER){
       /* Set callbacks */
       cb.ev_cb = ev_cb;
       cb.recv_cb = recv_cb;
@@ -269,7 +269,7 @@ sensor_timer_cb(void* ptr) {
  * When all readings have been collected, the controller can send commands.
  * You may send commands earlier if some data is missing after a timeout,
  * running actuation logic on the acquired data. */
-static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *source, uint32_t value, uint32_t threshold) { //DOING
+static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const linkaddr_t *source, uint32_t value, uint32_t threshold) {
 
     struct event_msg_t *event = currentEvent();
     struct sensor_reading_t *sensorVal = NULL;
@@ -447,16 +447,49 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //event
                               threshold should be increased */
 static void
 com_cb(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t command, uint32_t threshold) {
-
   /* Logging (based on the source and sequence number in the command message
    * sent by the sink, to guarantee that command transmission and
    * actuation can be matched by the analysis scripts) */
+
+bool check3 = linkaddr_cmp(event_source, &prev_cmd_s.event_source); //check if source is same
+if (check3 && prev_cmd_s.event_seqn == event_seqn && prev_cmd_s.threshold == threshold && prev_cmd_s.cmdtype && command){
+    printf("duplicate command [%02x:%02x, %u] %02x:%02x discarded\n",
+           event_source->u8[0], event_source->u8[1],
+           event_seqn,
+           linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
+    return;
+}
+
   printf("ACTUATION [%02x:%02x, %u] %02x:%02x\n",
     event_source->u8[0], event_source->u8[1],
     event_seqn,
     linkaddr_node_addr.u8[0], linkaddr_node_addr.u8[1]);
 
   /* Execute commands */
+
+
+  if (command == COMMAND_TYPE_NONE){
+      printf("COMMAND_TYPE_NONE\n");
+      return;
+  }
+  else if(command == COMMAND_TYPE_RESET){
+      printf("COMMAND_TYPE_RESET\n");
+      sensor_value = 0;
+      sensor_threshold = threshold;
+      return;
+  }
+  else if(command == COMMAND_TYPE_THRESHOLD){
+      printf("COMMAND_TYPE_THRESHOLD\n");
+      sensor_threshold = threshold;
+      return;
+  }
+  //if serviced, update the previous command struct with current command
+  prev_cmd_s.event_source = event_source;
+  prev_cmd_s.event_seqn = event_seqn;
+  prev_cmd_s.cmdtype = command;
+  prev_cmd_s.threshold = threshold;
+
+
 }
 /*---------------------------------------------------------------------------*/
 /* The actuation logic to be called after sensor readings have been collected.
