@@ -99,10 +99,10 @@ etc_command(struct etc_conn *conn, const linkaddr_t *dest,
 /*---------------------------------------------------------------------------*/
 /* Event message structure, combining event source (address of the sensor
  * generating the event) and a sequence number. */
-struct event_msg_t {
-  linkaddr_t event_source;
-  uint16_t event_seqn;
-}__attribute__((packed));
+//struct event_msg_t {
+//  linkaddr_t event_source;
+//  uint16_t event_seqn;
+//}__attribute__((packed));//porting to flood
 /*---------------------------------------------------------------------------*/
 /* ... */
 /*---------------------------------------------------------------------------*/
