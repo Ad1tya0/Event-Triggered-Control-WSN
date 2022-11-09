@@ -106,7 +106,7 @@ static void actuation_logic();
 static void actuation_commands();
 
 /* timer callbacks */
-static void collectionTimer_cb() { //called from recv_cb to do actuator after successfully reading sensor value
+static void collectionTimer_cb(void *ptr) { //called from recv_cb to do actuator after successfully reading sensor value
     actuation_logic();
     actuation_commands();
 }
