@@ -16,7 +16,7 @@ CONTIKI_PROJECT = app
 
 
 PROJECT_SOURCEFILES += etc.c
-
+PROJECT_SOURCEFILES += flooding.c
 
 # Tool to estimate node duty cycle 
 PROJECTDIRS += tools
