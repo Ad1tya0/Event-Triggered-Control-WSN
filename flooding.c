@@ -31,7 +31,7 @@ struct connection_t {//use for making a buffer for connections?
 
 struct forwardCollect_t {//header packet for data collection
     linkaddr_t source;
-    uint8_t hops;
+    uint8_t metric;
 } __attribute__((packed));
 
 
@@ -245,8 +245,9 @@ struct connection_t *get_BestConnection(void){//call this function to get best p
         if(linkaddr_cmp(srcSensor, &colect[i].source))
             return &collect[i];
         }
+    linkaddr_copy(&collect[0].source, srcHop);
+    collect[0].metric = metric;
     }
-
 
 
 
