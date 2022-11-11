@@ -46,15 +46,15 @@ etc_open(struct etc_conn* conn, uint16_t channels,
   /* Initialize the connector structure */
 
   /* Open the underlying Rime primitives */
-
+    broadcast_open(&bc_conn, channel, &bc_cb);
+    unicast_open(&uc_conn, channel + 1, &uc_cb);
   /* Initialize sensors forwarding structure */
 
   /* Tree construction (periodic) */
 }
 /*---------------------------------------------------------------------------*/
 /* Turn off the protocol */
-void
-etc_close(struct etc_conn *conn)
+void etc_close(struct etc_conn *conn)
 {
   /* Turn off connections to ignore any incoming packet
    * and stop transmitting */
@@ -110,11 +110,11 @@ etc_command(struct etc_conn *conn, const linkaddr_t *dest,
 /*---------------------------------------------------------------------------*/
 /* Structure for data collection messages.
  * Note: does not require separation of header and payload. */
-struct collect_msg_t {
-  linkaddr_t event_source;
-  uint16_t event_seqn;
-  /* ... */
-}__attribute__((packed));
+//struct collect_msg_t {
+//  linkaddr_t event_source;
+//  uint16_t event_seqn;
+//  /* ... */
+//}__attribute__((packed)); //ported to flooding
 /*---------------------------------------------------------------------------*/
 /* ... */
 /*---------------------------------------------------------------------------*/
@@ -122,11 +122,11 @@ struct collect_msg_t {
 /*---------------------------------------------------------------------------*/
 /* Structure for command messages.
  * Note: does not require separation of header and payload. */
-struct command_msg_t {
-  linkaddr_t event_source;
-  uint16_t event_seqn;
-  /* ... */
-}__attribute__((packed));
+//struct command_msg_t {
+//  linkaddr_t event_source;
+//  uint16_t event_seqn;
+//  /* ... */
+//}__attribute__((packed)); //ported to flooding
 /*---------------------------------------------------------------------------*/
 /* ... */
 /*---------------------------------------------------------------------------*/
