@@ -86,6 +86,10 @@ int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
     struct broadcast_header trigbc;
     triguc.type = UC_TYPE_COLLECT;
     trigbc.bcType = BC_TYPE_EVENT;
+
+    struct collect_msg_t collectMessage;
+    collectMessage.event_seqn=0;
+    linkaddr_copy(&collectMessage.event_source, &linkaddr_node_addr);
   /* Suppress other events for a given time window */
     ctimer_set(holdtaskTimer, (CLOCK_SECOND * 10), NULL, NULL);
   /* Send event */
@@ -106,7 +110,7 @@ int etc_command(struct etc_conn *conn, const linkaddr_t *dest,
   commandHeader.metric =0;
   commandMessage.event_seqn=0;
   linkaddr_copy(&commandMessage.event_source, &linkaddr_node_addr);
-
+    packetbuf_copyfrom(commandMessage, sizeof(command_msg_t));
     ucast_send(commandHeader, collect[0].source);
 }
 /*---------------------------------------------------------------------------*/
