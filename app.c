@@ -446,8 +446,7 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //event
                               back to normal;
  * - COMMAND_TYPE_THRESHOLD:  sensed value should not be modified, but the
                               threshold should be increased */
-static void
-com_cb(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t command, uint32_t threshold) {
+static void com_cb(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t command, uint32_t threshold) {
   /* Logging (based on the source and sequence number in the command message
    * sent by the sink, to guarantee that command transmission and
    * actuation can be matched by the analysis scripts) */

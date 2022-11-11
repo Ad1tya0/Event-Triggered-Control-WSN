@@ -155,7 +155,7 @@ void beacon_Stop(void){
         ConnectionBuffer[i].seqn = 0;
         ConnectionBuffer[i].metric = 50;
         ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
-        linkaddr_copy(&ConnectionBuffer[j].parent, &linkaddr_null);
+        linkaddr_copy(&ConnectionBuffer[i].parent, &linkaddr_null);
     }//remove all connections, wrap in function? might reuse
     ctimer_stop(&beacon_timer);
 }
@@ -317,7 +317,7 @@ void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender){ //callba
         //handle events in accordance to the type of bc message recieved, can be
     if(bcHeader.bcType == BC_TYPE_BEACON){
         beacon_recv(&bcHeader, sender); //call the beacon receive handler
-        printf("Received beacon, servicing...\n");
+        printf("Received beacon, tree process servicing...\n");
     }
     else if(bcHeader.bcType == BC_FORWARD_REQ)
         bcast_send_type(BC_FORWARD_REQ);
