@@ -65,8 +65,9 @@ void etc_close(struct etc_conn *conn)
 /*---------------------------------------------------------------------------*/
 /* Used by the app to share the most recent sensed value;
  * ONLY USED BY SENSORS */
-uint32_t sensorVal= value;
-uint32_t sensorThreshold = threshold;
+uint32_t sensorVal;
+uint32_t sensorThreshold; //these are in app.c, how do i update them here
+//message type struct does not have these ;-;
 void etc_update(uint32_t value, uint32_t threshold)
 {
     sensorVal= value;
