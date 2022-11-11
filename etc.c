@@ -9,6 +9,7 @@
 #include "etc.h"
 #include <net/mac/mac.h>
 #include <net/packetbuf.h>
+#include "flooding.h"
 /*---------------------------------------------------------------------------*/
 /* A simple debug system to enable/disable some printfs */
 #define DEBUG 0
@@ -42,12 +43,12 @@ etc_open(struct etc_conn* conn, uint16_t channels,
          linkaddr_t *sensors, uint8_t num_sensors)
 {
 
-    startETC(uint16_t )
+    connectivity_BEGIN(channels);
   /* Initialize the connector structure */
 
   /* Open the underlying Rime primitives */
-    broadcast_open(&bc_conn, channel, &bc_cb);
-    unicast_open(&uc_conn, channel + 1, &uc_cb);
+
+
   /* Initialize sensors forwarding structure */
 
   /* Tree construction (periodic) */
@@ -56,14 +57,14 @@ etc_open(struct etc_conn* conn, uint16_t channels,
 /* Turn off the protocol */
 void etc_close(struct etc_conn *conn)
 {
+    connectivity_TERMINATE();
   /* Turn off connections to ignore any incoming packet
    * and stop transmitting */
 }
 /*---------------------------------------------------------------------------*/
 /* Used by the app to share the most recent sensed value;
  * ONLY USED BY SENSORS */
-void
-etc_update(uint32_t value, uint32_t threshold)
+void etc_update(uint32_t value, uint32_t threshold)
 {
   /* Update local value and threshold, to be sent in case of event */
 }
@@ -72,8 +73,7 @@ etc_update(uint32_t value, uint32_t threshold)
  * contention).
  * Returns 0 if new events are currently being suppressed.
  * ONLY USED BY SENSORS */
-int
-etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
+int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
 {  
   /* Prepare event message */
 
@@ -84,8 +84,7 @@ etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
 /*---------------------------------------------------------------------------*/
 /* Called by the controller to send commands to a given destination.
  * ONLY USED BY CONTROLLER */
-int
-etc_command(struct etc_conn *conn, const linkaddr_t *dest,
+int etc_command(struct etc_conn *conn, const linkaddr_t *dest,
             command_type_t command, uint32_t threshold)
 {
   /* Prepare and send command */

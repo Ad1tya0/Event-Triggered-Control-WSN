@@ -20,6 +20,7 @@
 #include "core/net/linkaddr.h"
 #include "etc.h"
 #include "simple-energest.h"
+#include "flooding.h"
 /*---------------------------------------------------------------------------*/
 #define ETC_FIRST_CHANNEL           (0xAA)
 

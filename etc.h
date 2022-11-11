@@ -6,6 +6,7 @@
 #include "net/rime/rime.h"
 #include "net/netstack.h"
 #include "core/net/linkaddr.h"
+#include "flooding.h"
 /*---------------------------------------------------------------------------*/
 /* The following are suggested values for the ETC connection.
  * Depending on your implementation, you may not need some of these macros,

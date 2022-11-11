@@ -57,10 +57,10 @@ struct collect_msg_t {
 struct connection_t ConnectionBuffer[5];//store 5 best connections here, use some
 struct forwardCollect_t collect[NUM_SENSOR];// for data forwarding
 /* Callback function declarations */
-void bc_recv(struct broadcast_conn *conn, const linkaddr_t *sender);
-void uc_recv(struct unicast_conn *conn, const linkaddr_t *from);
-void bc_sent(struct broadcast_conn *conn, int status, int num_tx);
-void uc_sent(struct broadcast_conn *conn, int status, int num_tx);
+void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender);
+void uc_recv(struct unicast_conn *uc_conn, const linkaddr_t *from);
+void bc_sent(struct broadcast_conn *bc_conn, int status, int num_tx);
+void uc_sent(struct broadcast_conn *uc_conn, int status, int num_tx);
 void beacon_timer_cb(void *ptr);
 /*---------------------------------------------------------------------------*/
 /* Rime Callback structures */
@@ -120,6 +120,46 @@ struct unicast_header {
 /*---------------------------------------------------------------------------*/
                         /* Beacon routines */
 
+
+
+void beacon_timer_cb(void *ptr){
+//    struct my_collect_conn *conn = (struct my_collect_conn *)ptr; //what??
+    struct beacon_msg beaconMsg = {.seqn = ConnectionBuffer[0].seqn,
+                                   .metric = ConnectionBuffer[0].metric};
+    send_beacon(&beaconMsg);//start flooding
+    if (linkaddr_cmp(&etc_controllerx, &linkaddr_node_addr)){//verify if controller, rebuild the three from scratch after beacon interval
+        ConnectionBuffer[0].seqn++;//update beacon number
+        ctimer_set(&beacon_timer, BEACON_INTERVAL, beacon_timer_cb, NULL);
+    }
+}
+
+
+void beacon_Start(void){
+    //start by removing all connections
+    for(int i=0; i<6; i++){
+        ConnectionBuffer[i].seqn = 0;
+        ConnectionBuffer[i].metric = 50;
+        ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
+        linkaddr_copy(&ConnectionBuffer[j].parent, &linkaddr_null);
+    }//remove all connections, wrap in function? might reuse
+    if (linkaddr_cmp(&etc_controllerx, &linkaddr_node_addr)) {//verify if controller
+        ctimer_set(&beacon_timer, CLOCK_SECOND, beacon_timer_cb, NULL);//Schedule the first beacon message flood
+        ConnectionBuffer[0].metric = 0;/* The sink hop count is (by definition) *always* equal to 0.
+                       * Remember to update this field *before sending the first*
+                       * beacon message in broadcast! */
+    }
+}
+
+void beacon_Stop(void){
+    for(int i=0; i<6; i++){ //its 6 because i take 6 connections in the connection buffer: ConnectionBuffer[5]
+        ConnectionBuffer[i].seqn = 0;
+        ConnectionBuffer[i].metric = 50;
+        ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
+        linkaddr_copy(&ConnectionBuffer[j].parent, &linkaddr_null);
+    }//remove all connections, wrap in function? might reuse
+    ctimer_stop(&beacon_timer);
+}
+
 void send_beacon(const struct beacon_msg *beaconMsg){
     packetbuf_clear();
     packetbuf_copyfrom(beaconMsg, sizeof(struct beacon_msg));
@@ -137,45 +177,6 @@ void send_beacon(const struct beacon_msg *beaconMsg){
         printf(("FAILED to send beacon: seqn %d metric %d\n", beaconMsg->seqn, beaconMsg->metric);
     else
         printf("sending beacon: seqn %d metric %d\n", beaconMsg->seqn, beaconMsg->metric);
-}
-
-
-void beacon_timer_cb(void *ptr){
-//    struct my_collect_conn *conn = (struct my_collect_conn *)ptr; //what??
-    struct beacon_msg beaconMsg = {.seqn = ConnectionBuffer[0].seqn,
-                                   .metric = ConnectionBuffer[0].metric};
-    send_beacon(&beaconMsg);//start flooding
-    if (linkaddr_cmp(&etc_controllerx, &linkaddr_node_addr)){//verify if controller, rebuild the three from scratch after beacon interval
-        ConnectionBuffer[0].seqn++;//update beacon number
-        ctimer_set(&beacon_timer, BEACON_INTERVAL, beacon_timer_cb, NULL);
-    }
-}
-
-
-void beacon_Start(void){
-    //start by removing all connections
-    for(int i=0; i<5; i++){
-        ConnectionBuffer[i].seqn = 0;
-        ConnectionBuffer[i].metric = 0;
-        ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
-        ConnectionBuffer[i].parent = &linkaddr_null;
-    }//remove all connections, wrap in function? might reuse
-    if (linkaddr_cmp(&etc_controllerx, &linkaddr_node_addr)) {//verify if controller
-        ctimer_set(&beacon_timer, CLOCK_SECOND, beacon_timer_cb, NULL);//Schedule the first beacon message flood
-        ConnectionBuffer[0].metric = 0;/* The sink hop count is (by definition) *always* equal to 0.
-                       * Remember to update this field *before sending the first*
-                       * beacon message in broadcast! */
-    }
-}
-
-void beacon_Stop(void){
-    for(int i=0; i<5; i++){ //its 5 because i take 5 connections in the connection buffer: ConnectionBuffer[5]
-        ConnectionBuffer[i].seqn = 0;
-        ConnectionBuffer[i].metric = 50;
-        ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
-        ConnectionBuffer[i].parent = &linkaddr_null;
-    }//remove all connections, wrap in function? might reuse
-    ctimer_stop(&beacon_timer);
 }
 
 void beacon_recv(struct broadcast_header *broadcastHeader, linkaddr_t *sender){ //use header enum instead of callback, should be useful to understand type of message easily
@@ -207,7 +208,7 @@ void beacon_recv(struct broadcast_header *broadcastHeader, linkaddr_t *sender){ 
     if (beaconMsg.seqn != 0 && rssi < RSSI_THRESHOLD || beaconMsg.seqn < ConnectionBuffer[0].seqn)
         return;                             // The beacon is either too weak or too old, ignore it
     if (beaconMsg.seqn == ConnectionBuffer[0].seqn) { // The beacon is not new, check the metric
-        for (i=0; i<5; i++){
+        for (i=0; i<6; i++){
             if(beaconMsg.seqn == 0 && beaconMsg.seqn > ConnectionBuffer[0].seqn)
                 break;
             if(beaconMsg.metric + 1 >= ConnectionBuffer[i].metric) // Worse or equal than what we have, ignore it
@@ -235,7 +236,7 @@ void beacon_recv(struct broadcast_header *broadcastHeader, linkaddr_t *sender){ 
 
         /* Otherwise, memorize the new parent, the metric, and the seqn, we also store rssi */
         linkaddr_copy(&ConnectionBuffer[i].parent, sender);
-        ConnectionBuffer[i].metric = beaconMsg.metric + 1;
+        ConnectionBuffer[i].metric = beaconMsg.metric + 1;  //by default is zero, update now
         ConnectionBuffer[i].seqn = beaconMsg.seqn;
         ConnectionBuffer[i].rssi = rssi;
 
@@ -261,14 +262,7 @@ struct connection_t *get_BestConnection(void){//call this function to get best p
         return &ConnectionBuffer[0];
     }
 
-    void remove_CurrentConnection(void){    //remove current best connection from the connections buffer, call in case current connection is bad
-    for (int i=0; i<4; i++){
-        linkaddr_copy(&ConnectionBuffer[i].parent, &ConnectionBuffer[i-1].parent);
-        ConnectionBuffer[i].seqn = ConnectionBuffer[i-1].seqn;
-        ConnectionBuffer[i].metric = ConnectionBuffer[i-1].metric;
-        ConnectionBuffer[i].rssi = ConnectionBuffer[i-1].rssi;
-    }
-}
+
 
     /////////////////////////////////////////Downward Forwarding for actuation//////////////////////////////////////////
 
@@ -355,7 +349,7 @@ void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender){ //callba
 }
 
 
-void bc_sent(struct broadcast_conn *conn, int status, int num_tx){//callback for struct
+void bc_sent(struct broadcast_conn *bc_conn, int status, int num_tx){//callback for struct
     //can do some error handling here
     connCallback.bc.sent(status,num_tx); //send back to callback
 }
@@ -417,7 +411,7 @@ void uc_recv(struct unicast_conn *c, const linkaddr_t *from){
     connCallback.uc.recv(&ucHeader, from); //send to connection bcast callback
 }
 
-void uc_sent(struct broadcast_conn *conn, int status, int num_tx){
+void uc_sent(struct broadcast_conn *uc_conn, int status, int num_tx){
 
     if(status != MAC_TX_OK){    //oof
         printf("FAILED UC TX\n");
@@ -432,11 +426,25 @@ void uc_sent(struct broadcast_conn *conn, int status, int num_tx){
 }
 /////////////////////////////////////////MASTER//////////////////////////////////////////
 
-void connectivity_BEGIN(uint16_t channel, struct connection_callbacks *cb){
+void connectivity_BEGIN(uint16_t channel){
 
+    for(int i=0; i<6; i++){
+        ConnectionBuffer[i].seqn = 0;
+        ConnectionBuffer[i].metric = 50;
+        ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
+        linkaddr_copy(&ConnectionBuffer[j].parent, &linkaddr_null);
+    }//remove all connections to begin with
 
+    broadcast_open(&bc_conn, channel, &bc_cb);
+    unicast_open(&uc_conn, channel + 1, &uc_cb);
 
+    beacon_Start();
 
-    connCallback = cb;
+}
 
+void connectivity_TERMINATE(void){
+    broadcast_close(&bc_conn);
+    unicast_close(&uc_conn);
+
+    beacon_Stop();
 }
