@@ -73,6 +73,7 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn);
 static void com_cb(const linkaddr_t *event_source, uint16_t event_seqn, command_type_t command, uint32_t threshold);
 
 struct etc_callbacks cb = {.recv_cb = NULL, .ev_cb = NULL, .com_cb = NULL};
+struct event_msg_t event;
 const struct event_msg_t *currentEvent(void) {
     return &event;
 }
@@ -91,15 +92,15 @@ static void sensor_timer_cb(void* ptr);
 /* Controller */
 /*---------------------------------------------------------------------------*/
 /* Array for sensor readings */
-typedef struct {
+struct sensor_reading_t{
   linkaddr_t addr;
   uint16_t seqn;
   bool reading_available;
   uint32_t value;
   uint32_t threshold;
   command_type_t command;
-} sensor_reading_t;
-static sensor_reading_t sensor_readings[NUM_SENSORS];
+};
+struct sensor_reading_t sensor_readings[NUM_SENSORS];
 static uint8_t num_sensor_readings;
 
 /* Actuation functions */
@@ -114,15 +115,15 @@ static void collectionTimer_cb(void *ptr) { //called from recv_cb to do actuator
 /*---------------------------------------------------------------------------*/
 /*                           Node Allocator                                    */
 //would need for beacon tree building, port elsewhere?
-static enum node_role_t nodeType_returnvar = NODE_ROLE_INVALID;
+static enum node_role_t nodeType_returnvar;
 
 enum node_role_t get_nodeType(void){
         if(&linkaddr_node_addr == &etc_controller) {
             nodeType_returnvar = NODE_ROLE_CONTROLLER;
             return nodeType_returnvar;
         }
-
-    for(int i = 0; i<NUM_SENSORS; i++){
+        int i;
+    for(i = 0; i<NUM_SENSORS; i++){
         if(&linkaddr_node_addr == &etc_sensors[i]){
             nodeType_returnvar = NODE_ROLE_SENSOR_ACTUATOR;
             return nodeType_returnvar;
@@ -245,7 +246,8 @@ PROCESS_THREAD(app_process, ev, data) { //hello
 }
 /*---------------------------------------------------------------------------*/
 /* Periodic function to update the sensed value (and trigger events) */
-static void sensor_timer_cb(void* ptr) {
+static void
+sensor_timer_cb(void* ptr) {
   sensor_value += SENSOR_UPDATE_INCREMENT;
   etc_update(sensor_value, sensor_threshold);
   printf("Reading (%lu, %lu)\n", sensor_value, sensor_threshold);

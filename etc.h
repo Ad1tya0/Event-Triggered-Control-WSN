@@ -29,12 +29,19 @@ typedef enum {
   COMMAND_TYPE_THRESHOLD
 } command_type_t;
 /*---------------------------------------------------------------------------*/
-typedef enum {
+// typedef enum {
+//   NODE_ROLE_CONTROLLER,
+//   NODE_ROLE_SENSOR_ACTUATOR,
+//   NODE_ROLE_FORWARDER,
+//   NODE_ROLE_INVALID
+// } node_role_t;
+
+enum node_role_t{
   NODE_ROLE_CONTROLLER,
   NODE_ROLE_SENSOR_ACTUATOR,
   NODE_ROLE_FORWARDER,
   NODE_ROLE_INVALID
-} node_role_t;
+};
 /*---------------------------------------------------------------------------*/
 /* Callback structure */
 struct etc_callbacks {
@@ -70,7 +77,7 @@ struct etc_conn {
   struct ctimer suppression_prop_timer; // used to temporarily stop the propagation of events from other nodes
 
   /* Role (controller, forwarder, sensor/actuator) */
-  node_role_t node_role;
+  enum node_role_t node_role;
 
   /* Current event handled by the node;
    * useful to match logs of the control loop till actuation */
@@ -88,7 +95,7 @@ struct etc_conn {
 bool etc_open(
   struct etc_conn* conn,
   uint16_t channels, 
-  node_role_t node_role,
+  enum node_role_t node_role,
   const struct etc_callbacks *callbacks,
   linkaddr_t *sensors,
   uint8_t num_sensors);
