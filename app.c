@@ -144,8 +144,7 @@ enum node_role_t get_nodeType(void){
 /*---------------------------------------------------------------------------*/
 /* Application */
 /*---------------------------------------------------------------------------*/
-PROCESS_THREAD(app_process, ev, data)
-{
+PROCESS_THREAD(app_process, ev, data) { //hello
   PROCESS_BEGIN();
   SENSORS_ACTIVATE(button_sensor);
 
@@ -226,7 +225,7 @@ PROCESS_THREAD(app_process, ev, data)
         etc_open(&etc, ETC_FIRST_CHANNEL, NODE_ROLE_FORWARDER, &cb, etc_sensors, NUM_SENSORS);
         printf("App: Forwarder started\n");
       }
-    }
+
 
     /* Wait for button press (node failure simulation) */
     PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
@@ -246,8 +245,7 @@ PROCESS_THREAD(app_process, ev, data)
 }
 /*---------------------------------------------------------------------------*/
 /* Periodic function to update the sensed value (and trigger events) */
-static void
-sensor_timer_cb(void* ptr) {
+static void sensor_timer_cb(void* ptr) {
   sensor_value += SENSOR_UPDATE_INCREMENT;
   etc_update(sensor_value, sensor_threshold);
   printf("Reading (%lu, %lu)\n", sensor_value, sensor_threshold);
