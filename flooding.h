@@ -5,7 +5,7 @@
 #ifndef EVENT_TRIGGERED_CONTROL_WSN_FLOODING_H
 #define EVENT_TRIGGERED_CONTROL_WSN_FLOODING_H
 
-#endif //EVENT_TRIGGERED_CONTROL_WSN_FLOODING_H
+
 
 #include "net/linkaddr.h"
 #include "sys/types.h"
@@ -68,6 +68,46 @@ void bc_sent(struct broadcast_conn *bc_conn, int status, int num_tx);
 void uc_sent(struct broadcast_conn *uc_conn, int status, int num_tx);
 void beacon_timer_cb(void *ptr);
 /*---------------------------------------------------------------------------*/
+
+//broadcast
+//struct broadcast_conn bc_conn;
+
+
+// struct broadcast_callbacks bc_cb = {
+//         .recv = bc_recv,
+//         .sent = bc_sent};
+
+enum broadcast_msg_type {
+    BC_TYPE_BEACON,
+    BC_TYPE_EVENT,
+    BC_FORWARD_REQ,
+    BC_FORWARD_ACK
+}__attribute__((packed));
+
+struct broadcast_header {
+    enum broadcast_msg_type bcType;
+}__attribute__((packed));
+
+
+//unicast
+//struct unicast_conn uc_conn;
+
+// struct unicast_callbacks uc_cb = {
+//         .recv = uc_recv,
+//         .sent = uc_sent};
+
+enum unicast_msg_type {
+    UC_TYPE_COLLECT,
+    UC_TYPE_COMMAND
+}__attribute__((packed));
+
+struct unicast_header {
+    enum unicast_msg_type type;
+    uint8_t metric;
+}__attribute__((packed));
+
+
+
 /* Rime Callback structures */
 struct connection_callbacks {
     // broadcast callback
@@ -83,42 +123,6 @@ struct connection_callbacks {
     } uc;
 }connCallback;
 
-//broadcast
-struct broadcast_conn bc_conn;
-
-
-struct broadcast_callbacks bc_cb = {
-        .recv = bc_recv,
-        .sent = bc_sent};
-
-enum broadcast_msg_type {
-    BC_TYPE_BEACON,
-    BC_TYPE_EVENT,
-    BC_FORWARD_REQ,
-    BC_FORWARD_ACK
-}__attribute__((packed));
-
-struct broadcast_header {
-    enum broadcast_msg_type bcType;
-}__attribute__((packed));
-
-
-//unicast
-struct unicast_conn uc_conn;
-
-struct unicast_callbacks uc_cb = {
-        .recv = uc_recv,
-        .sent = uc_sent};
-
-enum unicast_msg_type {
-    UC_TYPE_COLLECT,
-    UC_TYPE_COMMAND
-}__attribute__((packed));
-
-struct unicast_header {
-    enum unicast_msg_type type;
-    uint8_t metric;
-}__attribute__((packed));
 
 void beacon_Start(void);
 void beacon_Stop(void);
@@ -132,3 +136,8 @@ void ucast_send(struct unicast_header *ucHeader, linkaddr_t *recvr);
 void connectivity_BEGIN(uint16_t channel);
 void connectivity_TERMINATE();
 
+
+
+
+
+#endif //EVENT_TRIGGERED_CONTROL_WSN_FLOODING_H
