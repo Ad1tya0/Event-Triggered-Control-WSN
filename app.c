@@ -324,8 +324,8 @@ static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const l
                value, threshold);
         return;
     }
-    if (value == sensorVal.value && threshold == sensorVal.threshold){//check if same receive
-        if(sensorVal.reading_available){
+    if (value == sensorVal->value && threshold == sensorVal->threshold){//check if same receive
+        if(sensorVal->reading_available){
             printf("DISCARDING [%02x:%02x, %u] %02x:%02x (%lu, %lu) as duplicate\n",
                    etc.event_source.u8[0], etc.event_source.u8[1],
                    etc.event_seqn,
@@ -342,9 +342,9 @@ static void recv_cb(const linkaddr_t *event_source, uint16_t event_seqn, const l
    * concurrent event. To match logs, the controller should
    * always use the same event_source and event_seqn for collection
    * and actuation */
-bool check1 = linkaddr_cmp (event_source, &sensorEvent.addr);
-bool check2 = linkaddr_cmp (event_source, &event.event_source);
-  if( event_seqn != sensorEvent.seqn || !check1){ //check if event failed
+bool check1 = linkaddr_cmp (event_source, &sensorEvent->addr);
+bool check2 = linkaddr_cmp (event_source, &event->event_source);
+  if( event_seqn != sensorEvent->seqn || !check1){ //check if event failed
       printf("Collection [%02x:%02x, %u] %02x:%02x (%lu, %lu) failed\n",
              etc.event_source.u8[0], etc.event_source.u8[1],
              etc.event_seqn,
@@ -352,7 +352,7 @@ bool check2 = linkaddr_cmp (event_source, &event.event_source);
              value, threshold);
       return;
   }
-    if( event_seqn != sensorEvent.seqn || !check2){ //check if event registered
+    if( event_seqn != sensorEvent->seqn || !check2){ //check if event registered
         printf("Collection [%02x:%02x, %u] %02x:%02x (%lu, %lu) not registered\n",
                etc.event_source.u8[0], etc.event_source.u8[1],
                etc.event_seqn,
@@ -363,10 +363,10 @@ bool check2 = linkaddr_cmp (event_source, &event.event_source);
 
     //update sensor reading and read counter
     num_sensor_readings += 1;
-    sensorVal.reading_available = true;
-    sensorVal.value = value;
-    sensorVal.threshold = threshold;
-    sensorVal.command = COMMAND_TYPE_NONE;
+    sensorVal->reading_available = true;
+    sensorVal->value = value;
+    sensorVal->threshold = threshold;
+    sensorVal->command = COMMAND_TYPE_NONE;
   printf("COLLECT [%02x:%02x, %u] %02x:%02x (%lu, %lu)\n",
     etc.event_source.u8[0], etc.event_source.u8[1],
     etc.event_seqn,
@@ -377,7 +377,7 @@ bool check2 = linkaddr_cmp (event_source, &event.event_source);
 
   if(num_sensor_readings > NUM_SENSORS){ //check if all data is collected
       ctimer_stop(&collectionTimer);
-      collectionTimer_cb(); //actuate
+      collectionTimer_cb(NULL); //actuate
   }
 
 }
@@ -401,7 +401,7 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //event
     /* Check if the event is old and discard it in that case;
    * otherwise, update the current event being handled */
 
-    if(event_seqn != 0 && event_seqn <= sensorVal.seqn){ //old value
+    if(event_seqn != 0 && event_seqn <= sensorVal->seqn){ //old value
             printf("EVENT [%02x:%02x, %u] DISCARDED as event is old\n",
                    etc.event_source.u8[0], etc.event_source.u8[1],
                    etc.event_seqn);
@@ -421,13 +421,13 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //event
   int i;
   for(i=0; i < NUM_SENSORS; i++){
       sensorVal = &sensor_readings[i];
-      if(event_source == sensorVal.addr)    //check if address is from sensor
+      linkaddr_cmp(event_source, &sensorVal->addr);    //check if address is from sensor
           break;
   }
   if(i > NUM_SENSORS)
       printf("ERROR: failed to verify sensor\n");
 
-  sensorVal.seqn = event_seqn; //update sequence number
+  sensorVal->seqn = event_seqn; //update sequence number
 
   //RESET
   for(i=0; i < NUM_SENSORS; i++){
@@ -435,7 +435,7 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //event
       sensorVal[i].reading_available = 0;
   }
   num_sensor_readings = 0;
-  ctimer_set(&collectionTimer, CONTROLLER_COLLECT_WAIT, collectionTimer_cb; NULL);
+  ctimer_set(&collectionTimer, CONTROLLER_COLLECT_WAIT, collectionTimer_cb, NULL);
 }//end event callback function
 
 /*---------------------------------------------------------------------------*/
@@ -484,7 +484,7 @@ if (check3 && prev_cmd_s.event_seqn == event_seqn && prev_cmd_s.threshold == thr
       return;
   }
   //if serviced, update the previous command struct with current command
-  prev_cmd_s.event_source = event_source;
+  linkaddr_copy(&prev_cmd_s.event_source, event_source);
   prev_cmd_s.event_seqn = event_seqn;
   prev_cmd_s.cmdtype = command;
   prev_cmd_s.threshold = threshold;
