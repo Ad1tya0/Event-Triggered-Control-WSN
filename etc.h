@@ -51,7 +51,7 @@ struct etc_callbacks {
 static struct {
     linkaddr_t event_source;
     uint16_t event_seqn;
-    enum command_type_t cmdtype;
+    command_type_t cmdtype;
     uint32_t threshold;
 } prev_cmd_s;
 /*---------------------------------------------------------------------------*/
