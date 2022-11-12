@@ -13,7 +13,7 @@
 //                                             * how it affects the radio-on time     \
 //                                             * (energy consumption) of ContikiMac */
 //#define NUM_SENSOR 5 //cant retrieve this from app.c
-//linkaddr_t etc_controllerx = {{0xF7, 0x9C}};//stupid method, should port node allocator from app.c, but if it works it works ig
+linkaddr_t etc_controllerx = {{0xF7, 0x9C}};//stupid method, should port node allocator from app.c, but if it works it works ig
 // struct beacon_msg {
 //     uint16_t seqn;
 //     uint16_t metric;
@@ -136,12 +136,13 @@ void beacon_timer_cb(void *ptr){
 
 void beacon_Start(void){
     //start by removing all connections
-    for(int i=0; i<6; i++){
+    int i;
+    for(i=0; i<6; i++){
         ConnectionBuffer[i].seqn = 0;
         ConnectionBuffer[i].metric = 50;
         ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
-        linkaddr_copy(&ConnectionBuffer[j].parent, &linkaddr_null);
-    }//remove all connections, wrap in function? might reuse
+        linkaddr_copy(&ConnectionBuffer[i].parent, &linkaddr_null);
+    }//remove all connections, wrap in fuction? might reuse
     if (linkaddr_cmp(&etc_controllerx, &linkaddr_node_addr)) {//verify if controller
         ctimer_set(&beacon_timer, CLOCK_SECOND, beacon_timer_cb, NULL);//Schedule the first beacon message flood
         ConnectionBuffer[0].metric = 0;/* The sink hop count is (by definition) *always* equal to 0.
@@ -151,7 +152,8 @@ void beacon_Start(void){
 }
 
 void beacon_Stop(void){
-    for(int i=0; i<6; i++){ //its 6 because i take 6 connections in the connection buffer: ConnectionBuffer[5]
+    int i;
+    for(i=0; i<6; i++){ //its 6 because i take 6 connections in the connection buffer: ConnectionBuffer[5]
         ConnectionBuffer[i].seqn = 0;
         ConnectionBuffer[i].metric = 50;
         ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
@@ -167,14 +169,14 @@ void send_beacon(const struct beacon_msg *beaconMsg){
     struct broadcast_header bcastHeader;
     bcastHeader.bcType = BC_TYPE_BEACON;
     if (!packetbuf_hdralloc(sizeof (bcastHeader))){
-        printf(("FAILED to allocate beacon header: seqn %d metric %d\n", beaconMsg->seqn, beaconMsg->metric);
+        printf("FAILED to allocate beacon header: seqn %d metric %d\n", beaconMsg->seqn, beaconMsg->metric);
         return;
     }
     memcpy(packetbuf_hdrptr(), &bcastHeader, sizeof (bcastHeader));
 
     bool ret = broadcast_send(&bc_conn);
     if(!ret)
-        printf(("FAILED to send beacon: seqn %d metric %d\n", beaconMsg->seqn, beaconMsg->metric);
+        printf("FAILED to send beacon: seqn %d metric %d\n", beaconMsg->seqn, beaconMsg->metric);
     else
         printf("sending beacon: seqn %d metric %d\n", beaconMsg->seqn, beaconMsg->metric);
 }
@@ -203,7 +205,7 @@ void beacon_recv(struct broadcast_header *broadcastHeader, linkaddr_t *sender){ 
     rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
     printf("recv beacon from %02x:%02x seqn %u metric %u rssi %d\n",
            sender->u8[0], sender->u8[1],
-           beacon.seqn, beacon.metric, rssi);
+           beaconMsg.seqn, beaconMsg.metric, rssi);
 
     if (beaconMsg.seqn != 0 && rssi < RSSI_THRESHOLD || beaconMsg.seqn < ConnectionBuffer[0].seqn)
         return;                             // The beacon is either too weak or too old, ignore it
@@ -250,11 +252,11 @@ void beacon_recv(struct broadcast_header *broadcastHeader, linkaddr_t *sender){ 
             /* Schedule beacon propagation */
             ctimer_set(&beacon_timer, BEACON_FORWARD_DELAY, beacon_timer_cb, NULL);
             printf("my_collect: new parent %02x:%02x, my metric %d, rssi %d\n",
-               ConnectionBuffer[0]->parent.u8[0], ConnectionBuffer[0].parent.u8[1], ConnectionBuffer[0].metric, ConnectionBuffer[0].rssi);
+               ConnectionBuffer[0].parent.u8[0], ConnectionBuffer[0].parent.u8[1], ConnectionBuffer[0].metric, ConnectionBuffer[0].rssi);
         }
         else{
             printf("my_collect: second best parent %02x:%02x, my metric %d, rssi %d\n",
-                   ConnectionBuffer[i]->parent.u8[0], ConnectionBuffer[i].parent.u8[1], ConnectionBuffer[i].metric, ConnectionBuffer[i].rssi);
+                   ConnectionBuffer[i].parent.u8[0], ConnectionBuffer[i].parent.u8[1], ConnectionBuffer[i].metric, ConnectionBuffer[i].rssi);
         }
     }
 
@@ -267,15 +269,17 @@ struct connection_t *get_BestConnection(void){//call this function to get best p
     /////////////////////////////////////////Downward Forwarding for actuation//////////////////////////////////////////
 
     void downForward_Reset(void) {
-        for (int i = 0; i < NUM_SENSOR; i++) {
+        int i;
+        for (i = 0; i < NUM_SENSOR; i++) {
             linkaddr_copy(&collect[i].source, &linkaddr_null);
-            collect[i].hops = 50;
+            collect[i].metric = 50;
         }
     }
 
-    struct forwardCollect_t downForward_Start(linkaddr_t* srcSensor, linkaddr_t* srcHop, uint8_t metric){
-    for(int i=0; i< NUM_SENSOR; i++){
-        if(linkaddr_cmp(srcSensor, &colect[i].source))
+    struct forwardCollect_t* downForward_Start(const linkaddr_t* srcSensor, linkaddr_t* srcHop, uint8_t metric){
+    int i;
+    for(i=0; i< NUM_SENSOR; i++){
+        if(linkaddr_cmp(srcSensor, &collect[i].source))
             return &collect[i];
         }
     linkaddr_copy(&collect[0].source, srcHop);
@@ -289,7 +293,7 @@ void bcast_send_type(enum broadcast_msg_type bcType){//send specific type of bro
     struct broadcast_header bcHeader;
     bcHeader.bcType = bcType;
     if (!packetbuf_hdralloc(sizeof (bcHeader))){
-        printf(("FAILED to allocate broadcast header/type\n");
+        printf("FAILED to allocate broadcast header/type\n");
         return;
     }
     memcpy(packetbuf_hdrptr(), &bcHeader, sizeof (bcHeader));
@@ -303,7 +307,7 @@ void bcast_send_type(enum broadcast_msg_type bcType){//send specific type of bro
 
 void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender){ //callback
     struct broadcast_header bcHeader;
-    struct forwardCollect_t collectMsg;
+    struct forwardCollect_t *collectMsg;
     memcpy(&bcHeader, packetbuf_dataptr(), sizeof(bcHeader));
 
     bool ret = packetbuf_hdrreduce(sizeof(bcHeader));
@@ -312,7 +316,7 @@ void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender){ //callba
         return;
     }
     else
-        printf("recv broadcast from %02x:%02x", sender.u8[0],sender.u8[1]); //how can i print bctype? its enum
+        printf("recv broadcast from %02x:%02x", sender->u8[0],sender->u8[1]); //how can i print bctype? its enum
 
         //handle events in accordance to the type of bc message recieved, can be
     if(bcHeader.bcType == BC_TYPE_BEACON){
@@ -325,27 +329,27 @@ void bc_recv(struct broadcast_conn *bc_conn, const linkaddr_t *sender){ //callba
     else if (bcHeader.bcType == BC_FORWARD_ACK){ //service downward forwarding collect
         packetbuf_copyto(&collectMsg);
         printf("recv downward forwarding message from %02x:%02x of metric %u \n",
-               collectMsg.source->u8[0], collectMsg.source->u8[1],
-               collectMsg.metric;
+               collectMsg->source.u8[0], collectMsg->source.u8[1],
+               collectMsg->metric);
 
         if(bcHeader.bcType == BC_FORWARD_REQ){
-            if(!linkaddr_cmp(&collectMsg.source, &linkaddr_node_addr))
+            if(!linkaddr_cmp(&collectMsg->source, &linkaddr_node_addr))
                 printf("FAILED collect as node type is not sensor\n");
-            if(linkaddr_cmp(&collectMsg.source, &linkaddr_node_addr)) {
-                collectMsg.metric = 0; //its the same thing we try to forward to, no hops
+            if(linkaddr_cmp(&collectMsg->source, &linkaddr_node_addr)) {
+                collectMsg->metric = 0; //its the same thing we try to forward to, no hops
                 printf("FAILED as trying to forward to itself");
             }
             else {
-                struct forwardCollect_t *newCollect = downForward_Start(&collectMsg.source, &sender, &collectMsg.metric);
-                if (linkaddr_cmp(%newCollect->source, &sender))//verify that we know
-                    collectMsg.metric = newCollect->metric; //update the hops
+                struct forwardCollect_t *newCollect = downForward_Start(&collectMsg->source, sender, &collectMsg->metric);
+                if (linkaddr_cmp(&newCollect->source, sender))//verify that we know
+                    collectMsg->metric = newCollect->metric; //update the hops
             }
             packetbuf_copyfrom(&collectMsg, sizeof (collectMsg));
             bcast_send_type(BC_FORWARD_ACK);
         }
     }
     else
-        connCallback.bc.recv(&bcHeader,sender);//send to connection bcast callback
+        connCallback.bc.recv(&bcHeader,&sender);//send to connection bcast callback
 }
 
 
@@ -358,14 +362,14 @@ void bc_sent(struct broadcast_conn *bc_conn, int status, int num_tx){//callback 
 
 void ucast_send(struct unicast_header *ucHeader, linkaddr_t *recvr){
     if(!packetbuf_hdralloc(sizeof (ucHeader))){
-        printf(("FAILED to allocate unicast header/type\n");
+        printf("FAILED to allocate unicast header/type\n");
         return;
     }
     memcpy(packetbuf_hdrptr(), &ucHeader, sizeof (ucHeader));
 
     bool ret = unicast_send(&uc_conn, recvr);
     if(!ret)
-        printf("FAILED to send unicast to %02x:%02x\n", recvr.u8[0],recvr.u8[1]);
+        printf("FAILED to send unicast to %02x:%02x\n", recvr->u8[0],recvr->u8[1]);
     else
         printf("sending unicast\n");
 }
@@ -382,7 +386,7 @@ void uc_recv(struct unicast_conn *c, const linkaddr_t *from){
         return;
     }
     else{
-        printf("recv unicast from %02x:%02x", from.u8[0],from.u8[1]); //how can i print bctype? its enum
+        printf("recv unicast from %02x:%02x", from->u8[0],from->u8[1]); //how can i print bctype? its enum
         ucHeader.metric++;//a lot of hops will not be ideal, lets say max 10 hops
         if(ucHeader.metric > 11){
             printf("FAILED unicast as too many hops");
@@ -392,10 +396,11 @@ void uc_recv(struct unicast_conn *c, const linkaddr_t *from){
 
 
     if(ucHeader.type == UC_TYPE_COLLECT){
-        if(linkaddr_cmp(from, get_BestConnection()->parent)){
+        if(linkaddr_cmp(from, &get_BestConnection()->parent)){
             printf("FAILED collect as source is the same as parent, creating loop\n");
             //remove current connection from the connection buffer, making the next best connection the current one
-            for (int i=0; i<4; i++){
+            int i;
+            for (i=0; i<4; i++){
                 linkaddr_copy(&ConnectionBuffer[i].parent, &ConnectionBuffer[i+1].parent);
                 ConnectionBuffer[i].metric = ConnectionBuffer[i+1].metric;
                 ConnectionBuffer[i].seqn = ConnectionBuffer[i+1].seqn;
@@ -405,7 +410,7 @@ void uc_recv(struct unicast_conn *c, const linkaddr_t *from){
     }
     else if(ucHeader.type == UC_TYPE_COMMAND){
         struct command_msg_t cmdMsg;
-        struct forwardCollect_t *newCollect = downForward_Start(&cmdMsg.event_source, NULL, &cmdMsg.event_seqn); //received command, start downward forwarding
+        struct forwardCollect_t *newCollect = downForward_Start(&cmdMsg.event_source, NULL, cmdMsg.event_seqn); //received command, start downward forwarding
         printf("received new UC command, starting downward forwarding\n"); //there can also be loops here from srcHop, not sure how to mitigate
     }
     connCallback.uc.recv(&ucHeader, from); //send to connection bcast callback
@@ -427,12 +432,12 @@ void uc_sent(struct broadcast_conn *uc_conn, int status, int num_tx){
 /////////////////////////////////////////MASTER//////////////////////////////////////////
 
 void connectivity_BEGIN(uint16_t channel){
-
-    for(int i=0; i<6; i++){
+    int i;
+    for(i=0; i<6; i++){
         ConnectionBuffer[i].seqn = 0;
         ConnectionBuffer[i].metric = 50;
         ConnectionBuffer[i].rssi = RSSI_THRESHOLD;
-        linkaddr_copy(&ConnectionBuffer[j].parent, &linkaddr_null);
+        linkaddr_copy(&ConnectionBuffer[i].parent, &linkaddr_null);
     }//remove all connections to begin with
 
     broadcast_open(&bc_conn, channel, &bc_cb);

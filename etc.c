@@ -39,7 +39,7 @@ struct ctimer holdtaskTimer;
 
 /* Create connection(s) and start the protocol */
 bool etc_open(struct etc_conn* conn, uint16_t channels,
-         node_role_t node_role, const struct etc_callbacks *callbacks,
+         enum node_role_t node_role, const struct etc_callbacks *callbacks,
          linkaddr_t *sensors, uint8_t num_sensors)
 {
 
@@ -57,7 +57,7 @@ bool etc_open(struct etc_conn* conn, uint16_t channels,
 /* Turn off the protocol */
 void etc_close(struct etc_conn *conn)
 {
-    ctimer_stop(&holdtaskTimer;)
+    ctimer_stop(&holdtaskTimer);
     connectivity_TERMINATE();
   /* Turn off connections to ignore any incoming packet
    * and stop transmitting */
@@ -92,9 +92,9 @@ int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
     collectMessage.event_seqn=0;
     linkaddr_copy(&collectMessage.event_source, &linkaddr_node_addr);
   /* Suppress other events for a given time window */
-    ctimer_set(holdtaskTimer, (CLOCK_SECOND * 10), NULL, NULL);
+    ctimer_set(&holdtaskTimer, (CLOCK_SECOND * 10), NULL, NULL);
   /* Send event */
-    ucast_send(triguc, get_BestConnection()->parent);
+    ucast_send(&triguc, &get_BestConnection()->parent);
     bcast_send_type(trigbc);
 }
 /*---------------------------------------------------------------------------*/
@@ -111,8 +111,8 @@ int etc_command(struct etc_conn *conn, const linkaddr_t *dest,
   commandHeader.metric =0;
   commandMessage.event_seqn=0;
   linkaddr_copy(&commandMessage.event_source, &linkaddr_node_addr);
-    packetbuf_copyfrom(commandMessage, sizeof(command_msg_t));
-    ucast_send(commandHeader, collect[0].source);
+    packetbuf_copyfrom(&commandMessage, sizeof(struct command_msg_t));
+    ucast_send(&commandHeader, &collect[0].source);
 }
 /*---------------------------------------------------------------------------*/
 /*                              Beacon Handling                              */

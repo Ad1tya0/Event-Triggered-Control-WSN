@@ -397,7 +397,12 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //event
   struct event_msg_t *curr_ev = currentEvent();
   struct sensor_reading_t *sensorVal;
 
-
+  int i;
+  for(i=0; i < NUM_SENSORS; i++){
+      sensorVal = &sensor_readings[i];
+      linkaddr_cmp(event_source, &sensorVal->addr);    //check if address is from sensor
+          break;
+  }
     /* Check if the event is old and discard it in that case;
    * otherwise, update the current event being handled */
 
@@ -418,12 +423,7 @@ static void ev_cb(const linkaddr_t *event_source, uint16_t event_seqn) { //event
       return;
   }
   /* get sensor readings */
-  int i;
-  for(i=0; i < NUM_SENSORS; i++){
-      sensorVal = &sensor_readings[i];
-      linkaddr_cmp(event_source, &sensorVal->addr);    //check if address is from sensor
-          break;
-  }
+
   if(i > NUM_SENSORS)
       printf("ERROR: failed to verify sensor\n");
 

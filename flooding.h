@@ -18,7 +18,7 @@
 
 
 #define NUM_SENSOR 5
-linkaddr_t etc_controllerx = {{0xF7, 0x9C}};
+//linkaddr_t etc_controllerx = {{0xF7, 0x9C}};
 struct beacon_msg {
     uint16_t seqn;
     uint16_t metric;
@@ -130,7 +130,7 @@ void send_beacon(const struct beacon_msg *beaconMsg);
 void beacon_recv(struct broadcast_header *broadcastHeader, linkaddr_t *sender);
 struct connection_t *get_BestConnection(void);
 void downForward_Reset(void);
-struct forwardCollect_t downForward_Start(linkaddr_t* srcSensor, linkaddr_t* srcHop, uint8_t metric);
+struct forwardCollect_t* downForward_Start(const linkaddr_t* srcSensor, linkaddr_t* srcHop, uint8_t metric);
 void bcast_send_type(enum broadcast_msg_type bcType);
 void ucast_send(struct unicast_header *ucHeader, linkaddr_t *recvr);
 void connectivity_BEGIN(uint16_t channel);
