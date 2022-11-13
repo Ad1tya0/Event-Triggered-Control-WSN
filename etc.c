@@ -52,6 +52,7 @@ bool etc_open(struct etc_conn* conn, uint16_t channels,
   /* Initialize sensors forwarding structure */
 
   /* Tree construction (periodic) */
+    return 1;
 }
 /*---------------------------------------------------------------------------*/
 /* Turn off the protocol */
@@ -84,9 +85,9 @@ int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
 {
   /* Prepare event message */
     struct unicast_header triguc;
-    struct broadcast_header trigbc;
+    enum broadcast_msg_type trigbc;
     triguc.type = UC_TYPE_COLLECT;
-    trigbc.bcType = BC_TYPE_EVENT;
+    //trigbc.bcType = BC_TYPE_EVENT;
 
     struct collect_msg_t collectMessage;
     collectMessage.event_seqn=0;
@@ -95,7 +96,9 @@ int etc_trigger(struct etc_conn *conn, uint32_t value, uint32_t threshold)
     ctimer_set(&holdtaskTimer, (CLOCK_SECOND * 10), NULL, NULL);
   /* Send event */
     ucast_send(&triguc, &get_BestConnection()->parent);
-    bcast_send_type(trigbc);
+    bcast_send_type(BC_TYPE_EVENT);
+
+    return 1;
 }
 /*---------------------------------------------------------------------------*/
 /* Called by the controller to send commands to a given destination.
@@ -113,6 +116,7 @@ int etc_command(struct etc_conn *conn, const linkaddr_t *dest,
   linkaddr_copy(&commandMessage.event_source, &linkaddr_node_addr);
     packetbuf_copyfrom(&commandMessage, sizeof(struct command_msg_t));
     ucast_send(&commandHeader, &collect[0].source);
+    return 1;
 }
 /*---------------------------------------------------------------------------*/
 /*                              Beacon Handling                              */
